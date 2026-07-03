@@ -17,35 +17,37 @@
 
 import os
 from pathlib import Path
-from gi.repository import Gtk, Adw, GLib, Gio, GObject
 from typing import Optional
 
-from gradia.constants import rootdir, ocr_enabled  # pyright: ignore
-from gradia.backend.settings import Settings
+from gi.repository import Adw, Gio, GLib, GObject, Gtk
+from gradia.constants import ocr_enabled, rootdir  # pyright: ignore
+
 from gradia.app_constants import SUPPORTED_EXPORT_FORMATS
 from gradia.backend.logger import Logger
-from gradia.ui.preferences.provider_selection_window import ProviderListPage
-from gradia.ui.preferences.ocr_model_page import OCRModelPage
 from gradia.backend.ocr import OCR
+from gradia.backend.settings import Settings
+from gradia.ui.preferences.ocr_model_page import OCRModelPage
+from gradia.ui.preferences.provider_selection_window import ProviderListPage
 
 logger = Logger()
 
 
 @Gtk.Template(resource_path=f"{rootdir}/ui/preferences_window.ui")
 class PreferencesWindow(Adw.PreferencesDialog):
-    __gtype_name__ = 'GradiaPreferencesWindow'
+    __gtype_name__ = "GradiaPreferencesWindow"
 
     help_button: Gtk.Button = Gtk.Template.Child()
     save_format_group: Adw.PreferencesGroup = Gtk.Template.Child()
     delete_screenshot_switch: Adw.SwitchRow = Gtk.Template.Child()
     overwrite_screenshot_switch: Adw.SwitchRow = Gtk.Template.Child()
+    close_after_copy_switch: Adw.SwitchRow = Gtk.Template.Child()
     confirm_upload_switch: Adw.SwitchRow = Gtk.Template.Child()
     save_format_combo: Adw.ComboRow = Gtk.Template.Child()
     provider_name: Gtk.Label = Gtk.Template.Child()
     exiting_combo: Adw.ComboRow = Gtk.Template.Child()
     folder_label: Gtk.Label = Gtk.Template.Child()
 
-    ocr_enabled = GObject.Property(type=bool, default=ocr_enabled.lower() == 'true')
+    ocr_enabled = GObject.Property(type=bool, default=ocr_enabled.lower() == "true")
 
     def __init__(self, parent_window: Adw.ApplicationWindow, **kwargs):
         super().__init__(**kwargs)
@@ -60,7 +62,7 @@ class PreferencesWindow(Adw.PreferencesDialog):
         shortcut_controller = Gtk.ShortcutController()
         shortcut = Gtk.Shortcut.new(
             Gtk.ShortcutTrigger.parse_string("Escape"),
-            Gtk.ShortcutAction.parse_string("action(window.close)")
+            Gtk.ShortcutAction.parse_string("action(window.close)"),
         )
         shortcut_controller.add_shortcut(shortcut)
         self.add_controller(shortcut_controller)
@@ -80,10 +82,10 @@ class PreferencesWindow(Adw.PreferencesDialog):
             self.provider_name.set_text(_("None Selected"))
 
     def _setup_folder_label(self):
-       path = self.settings.screenshot_folder
-       if path is None:
-           path = "Screenshots"
-       self.folder_label.set_text(os.path.basename(path))
+        path = self.settings.screenshot_folder
+        if path is None:
+            path = "Screenshots"
+        self.folder_label.set_text(os.path.basename(path))
 
     def _setup_save_format_combo(self):
         current_format = self.settings.export_format
@@ -93,7 +95,7 @@ class PreferencesWindow(Adw.PreferencesDialog):
         self.format_keys = format_keys
 
         for fmt in format_keys:
-            display_name = SUPPORTED_EXPORT_FORMATS[fmt]['shortname']
+            display_name = SUPPORTED_EXPORT_FORMATS[fmt]["shortname"]
             string_list.append(display_name)
 
         self.save_format_combo.set_model(string_list)
@@ -113,7 +115,7 @@ class PreferencesWindow(Adw.PreferencesDialog):
         exit_options = [
             ("confirm", _("Ask for Confirmation")),
             ("copy", _("Copy and Close ")),
-            ("none", _("Close Instantly"))
+            ("none", _("Close Instantly")),
         ]
         self.exit_option_keys = [key for key, _ in exit_options]
 
@@ -154,13 +156,20 @@ class PreferencesWindow(Adw.PreferencesDialog):
     def show_toast(self, message: str) -> None:
         toast = Adw.Toast.new(message)
         toast.set_timeout(2)
-        if hasattr(self.parent_window, 'add_toast'):
+        if hasattr(self.parent_window, "add_toast"):
             self.parent_window.add_toast(toast)
 
     def _bind_settings(self):
-        self.settings.bind_switch(self.delete_screenshot_switch,"trash-screenshots-on-close")
-        self.settings.bind_switch(self.confirm_upload_switch,"show-export-confirm-dialog")
-        self.settings.bind_switch(self.overwrite_screenshot_switch,"overwrite-screenshot")
+        self.settings.bind_switch(
+            self.delete_screenshot_switch, "trash-screenshots-on-close"
+        )
+        self.settings.bind_switch(
+            self.confirm_upload_switch, "show-export-confirm-dialog"
+        )
+        self.settings.bind_switch(
+            self.overwrite_screenshot_switch, "overwrite-screenshot"
+        )
+        self.settings.bind_switch(self.close_after_copy_switch, "close-after-copy")
 
     @Gtk.Template.Callback()
     def on_choose_provider_clicked(self, button: Gtk.Button) -> None:
@@ -169,11 +178,17 @@ class PreferencesWindow(Adw.PreferencesDialog):
             self.settings.provider_name = name
             self.settings.custom_export_command = command
             self.parent_window.update_command_ready()
-        self.push_subpage(ProviderListPage(preferences_dialog=self,on_provider_selected=handle_selection))
+
+        self.push_subpage(
+            ProviderListPage(
+                preferences_dialog=self, on_provider_selected=handle_selection
+            )
+        )
 
     @Gtk.Template.Callback()
     def on_folder_row_clicked(self, row: Adw.ActionRow) -> None:
         file_dialog = Gtk.FileDialog()
+
         def on_folder_selected(dialog, result):
             try:
                 folder = dialog.select_folder_finish(result)
@@ -184,26 +199,29 @@ class PreferencesWindow(Adw.PreferencesDialog):
                     self.settings.screenshot_folder = folder_path
 
                     window = self.parent_window
-                    action = window.lookup_action("set-screenshot-folder") if window else None
+                    action = (
+                        window.lookup_action("set-screenshot-folder")
+                        if window
+                        else None
+                    )
                     if action:
-                        action.activate(GLib.Variant('s', folder_path))
+                        action.activate(GLib.Variant("s", folder_path))
 
             except GLib.Error:
                 pass
 
         file_dialog.select_folder(
-            parent=self.get_root(),
-            cancellable=None,
-            callback=on_folder_selected
+            parent=self.get_root(), cancellable=None, callback=on_folder_selected
         )
 
     @Gtk.Template.Callback()
     def on_manage_language_models_clicked(self, row: Adw.ActionRow) -> None:
         self.push_subpage(OCRModelPage(preferences_dialog=self, window=self.get_root()))
 
+
 @Gtk.Template(resource_path=f"{rootdir}/ui/preferences/screenshot_guide_page.ui")
 class ScreenshotGuidePage(Adw.NavigationPage):
-    __gtype_name__ = 'GradiaScreenshotGuidePage'
+    __gtype_name__ = "GradiaScreenshotGuidePage"
 
     interactive_entry: Gtk.Entry = Gtk.Template.Child()
     fullscreen_entry: Gtk.Entry = Gtk.Template.Child()
@@ -216,17 +234,19 @@ class ScreenshotGuidePage(Adw.NavigationPage):
         self._setup_command_entries()
 
     def _is_running_in_flatpak(self) -> bool:
-        if os.getenv('FLATPAK_ID'):
+        if os.getenv("FLATPAK_ID"):
             return True
-        if Path('/.flatpak-info').exists():
+        if Path("/.flatpak-info").exists():
             return True
-        if '/app/' in str(Path(__file__).resolve()):
+        if "/app/" in str(Path(__file__).resolve()):
             return True
         return False
 
     def _get_command_for_screenshot_type(self, screenshot_type: str) -> str:
         if self._is_running_in_flatpak():
-            return f"flatpak run be.alexandervanhee.gradia --screenshot={screenshot_type}"
+            return (
+                f"flatpak run be.alexandervanhee.gradia --screenshot={screenshot_type}"
+            )
         else:
             return f"gradia --screenshot={screenshot_type}"
 
@@ -235,7 +255,9 @@ class ScreenshotGuidePage(Adw.NavigationPage):
         self.fullscreen_entry.connect("icon-press", self._on_entry_icon_press)
         self.delayed_entry.connect("icon-press", self._on_entry_icon_press)
 
-    def _on_entry_icon_press(self, entry: Gtk.Entry, icon_pos: Gtk.EntryIconPosition) -> None:
+    def _on_entry_icon_press(
+        self, entry: Gtk.Entry, icon_pos: Gtk.EntryIconPosition
+    ) -> None:
         if icon_pos == Gtk.EntryIconPosition.SECONDARY:
             self._copy_to_clipboard(entry.get_text())
 

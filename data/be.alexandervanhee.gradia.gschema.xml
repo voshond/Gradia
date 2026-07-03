@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8" ?>
 <schemalist>
   <schema id="@APP_ID@" path="/be/alexandervanhee/gradia/">
      <key name="draw-mode" type="s">
@@ -6,7 +6,8 @@
       <summary>Current drawing mode</summary>
     </key>
     <key name="tool-config" type="a{ss}">
-      <default>{'tool_highlighter': "{\"mode\": \"HIGHLIGHTER\", \"size\": 14, \"primary_color\": [0.96, 0.83, 0.18, 0.4], \"fill_color\": [1.0, 1.0, 1.0, 1.0], \"border_color\": [0.0, 0.0, 0.0, 1.0]}", 'tool_number': "{\"mode\": \"NUMBER\", \"size\": 14, \"primary_color\": [0.0, 0.0, 0.0, 1.0], \"fill_color\": [1.0, 1.0, 1.0, 1.0], \"border_color\": [0.0, 0.0, 0.0, 0.0]}", 'tool_circle': "{\"mode\": \"CIRCLE\", \"size\": 14, \"primary_color\": [1.0, 1.0, 1.0, 1.0], \"fill_color\": [1.0, 1.0, 1.0, 1.0], \"border_color\": [0.0, 0.0, 0.0, 1.0]}", 'tool_square': "{\"mode\": \"SQUARE\", \"size\": 14, \"primary_color\": [1.0, 1.0, 1.0, 1.0], \"fill_color\": [1.0, 1.0, 1.0, 1.0], \"border_color\": [0.0, 0.0, 0.0, 1.0]}", 'tool_arrow': "{\"mode\": \"ARROW\", \"size\": 14, \"primary_color\": [0.0, 0.0, 0.0, 1.0], \"fill_color\": [1.0, 1.0, 1.0, 1.0], \"border_color\": [0.0, 0.0, 0.0, 1.0]}", 'tool_line': "{\"mode\": \"LINE\", \"size\": 14, \"primary_color\": [0.0, 0.0, 0.0, 1.0], \"fill_color\": [1.0, 1.0, 1.0, 1.0], \"border_color\": [0.0, 0.0, 0.0, 1.0]}", 'tool_pen': "{\"mode\": \"PEN\", \"size\": 14, \"primary_color\": [0.0, 0.0, 0.0, 1.0], \"fill_color\": [1.0, 1.0, 1.0, 1.0], \"border_color\": [0.0, 0.0, 0.0, 1.0]}"}</default>
+      <default
+      >{'tool_highlighter': "{\"mode\": \"HIGHLIGHTER\", \"size\": 14, \"primary_color\": [0.96, 0.83, 0.18, 0.4], \"fill_color\": [1.0, 1.0, 1.0, 1.0], \"border_color\": [0.0, 0.0, 0.0, 1.0]}", 'tool_number': "{\"mode\": \"NUMBER\", \"size\": 14, \"primary_color\": [0.0, 0.0, 0.0, 1.0], \"fill_color\": [1.0, 1.0, 1.0, 1.0], \"border_color\": [0.0, 0.0, 0.0, 0.0]}", 'tool_circle': "{\"mode\": \"CIRCLE\", \"size\": 14, \"primary_color\": [1.0, 1.0, 1.0, 1.0], \"fill_color\": [1.0, 1.0, 1.0, 1.0], \"border_color\": [0.0, 0.0, 0.0, 1.0]}", 'tool_square': "{\"mode\": \"SQUARE\", \"size\": 14, \"primary_color\": [1.0, 1.0, 1.0, 1.0], \"fill_color\": [1.0, 1.0, 1.0, 1.0], \"border_color\": [0.0, 0.0, 0.0, 1.0]}", 'tool_arrow': "{\"mode\": \"ARROW\", \"size\": 14, \"primary_color\": [0.0, 0.0, 0.0, 1.0], \"fill_color\": [1.0, 1.0, 1.0, 1.0], \"border_color\": [0.0, 0.0, 0.0, 1.0]}", 'tool_line': "{\"mode\": \"LINE\", \"size\": 14, \"primary_color\": [0.0, 0.0, 0.0, 1.0], \"fill_color\": [1.0, 1.0, 1.0, 1.0], \"border_color\": [0.0, 0.0, 0.0, 1.0]}", 'tool_pen': "{\"mode\": \"PEN\", \"size\": 14, \"primary_color\": [0.0, 0.0, 0.0, 1.0], \"fill_color\": [1.0, 1.0, 1.0, 1.0], \"border_color\": [0.0, 0.0, 0.0, 1.0]}"}</default>
       <summary>Dictionary of tool configuration strings</summary>
     </key>
     <key name="image-padding" type="i">
@@ -40,7 +41,8 @@
     </key>
 
     <key name="gradient-state" type="s">
-      <default>"{\"mode\": \"linear\", \"steps\": [[0.0, \"rgb(87,227,137)\"], [1.0, \"rgb(53,132,228)\"]], \"angle\": 135}"</default>
+      <default
+      >"{\"mode\": \"linear\", \"steps\": [[0.0, \"rgb(87,227,137)\"], [1.0, \"rgb(53,132,228)\"]], \"angle\": 135}"</default>
       <summary>Serialized state of the gradient background</summary>
     </key>
     <key name="image-state" type="s">
@@ -62,15 +64,22 @@
     </key>
     <key name="trash-screenshots-on-close" type="b">
       <default>false</default>
-      <summary>Whether to trash all taken screenshots from the current session on close.</summary>
+      <summary
+      >Whether to trash all taken screenshots from the current session on close.</summary>
     </key>
     <key name="image-options-lock" type="b">
       <default>false</default>
-      <summary>Whether to trash all taken screenshots from the current session on close.</summary>
+      <summary
+      >Whether to trash all taken screenshots from the current session on close.</summary>
     </key>
     <key name="exit-method" type="s">
       <default>'confirm'</default>
       <summary>Method of how the app exists.</summary>
+    </key>
+    <key name="close-after-copy" type="b">
+      <default>false</default>
+      <summary
+      >Whether to close the window automatically after copying to clipboard.</summary>
     </key>
     <key name="overwrite-screenshot" type="b">
       <default>false</default>
@@ -79,7 +88,8 @@
     <key name="custom-export-command" type="s">
       <default>''</default>
       <summary>Custom command to run when pressing its button</summary>
-      <description>Command that receives the edited file path as stdin and returns clipboard output</description>
+      <description
+      >Command that receives the edited file path as stdin and returns clipboard output</description>
     </key>
     <key name="provider-name" type="s">
       <default>''</default>
@@ -96,14 +106,16 @@
     </key>
     <key name="source-snippet-show-line-numbers" type="b">
       <default>true</default>
-      <summary>Whether to show a number before each line of code of the source snippet.</summary>
+      <summary
+      >Whether to show a number before each line of code of the source snippet.</summary>
     </key>
     <key name="source-snippet-language" type="s">
       <default>'c'</default>
       <summary>Chosen programming language of the source snippet</summary>
     </key>
     <key name="source-snippet-code-text" type="s">
-      <default>'// Gradia&#10;#include &lt;pthread.h&gt;&#10;#include &lt;stdio.h&gt;&#10;&#10;void* say_hello(void* arg) {&#10;    puts("Hello from thread!");&#10;    return NULL;&#10;}&#10;&#10;int main() {&#10;    pthread_t t;&#10;    pthread_create(&amp;t, NULL, say_hello, NULL);&#10;    pthread_join(t, NULL);&#10;}'</default>
+      <default
+      >'// Gradia&#10;#include &lt;pthread.h&gt;&#10;#include &lt;stdio.h&gt;&#10;&#10;void* say_hello(void* arg) {&#10;    puts("Hello from thread!");&#10;    return NULL;&#10;}&#10;&#10;int main() {&#10;    pthread_t t;&#10;    pthread_create(&amp;t, NULL, say_hello, NULL);&#10;    pthread_join(t, NULL);&#10;}'</default>
       <summary>Code of the source snippet</summary>
     </key>
       <key name="source-snippet-title" type="s">
@@ -120,4 +132,3 @@
     </key>
   </schema>
 </schemalist>
-

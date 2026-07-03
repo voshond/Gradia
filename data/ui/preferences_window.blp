@@ -65,6 +65,14 @@ template $GradiaPreferencesWindow: Adw.PreferencesDialog {
         use-underline: true;
       }
 
+      Adw.SwitchRow close_after_copy_switch {
+        title: _("_Close After Copy");
+        use-underline: true;
+        subtitle: _("Automatically close after pressing Ctrl+C");
+        tooltip-text: _("Close app after copying screenshot with Ctrl+C");
+        activatable: true;
+      }
+
       Adw.SwitchRow overwrite_screenshot_switch {
         title: _("_Overwrite Last Screenshot on Close");
         use-underline: true;
@@ -139,4 +147,3 @@ template $GradiaPreferencesWindow: Adw.PreferencesDialog {
     }
   }
 }
-

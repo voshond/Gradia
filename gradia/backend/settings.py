@@ -15,8 +15,10 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from gi.repository import Gio, Gdk, Gtk, GLib
+from gi.repository import Gdk, Gio, GLib, Gtk
+
 from gradia.constants import app_id
+
 
 class Settings:
     def __init__(self) -> None:
@@ -61,7 +63,6 @@ class Settings:
 
         return result
 
-
     @property
     def screenshot_folder(self) -> str:
         value = self._settings.get_string("screenshot-folder")
@@ -82,6 +83,10 @@ class Settings:
     @property
     def export_compress(self) -> bool:
         return self._settings.get_boolean("export-compress")
+
+    @property
+    def close_after_copy(self) -> bool:
+        return self._settings.get_boolean("close-after-copy")
 
     @property
     def delete_screenshots_on_close(self) -> bool:
@@ -117,7 +122,7 @@ class Settings:
         return self._settings.get_string("provider-name")
 
     @provider_name.setter
-    def provider_name(self, value:str) -> None:
+    def provider_name(self, value: str) -> None:
         self._settings.set_string("provider-name", value)
 
     @property
@@ -167,6 +172,10 @@ class Settings:
     @property
     def image_options_lock(self) -> bool:
         return self._settings.get_boolean("image-options-lock")
+
+    @close_after_copy.setter
+    def close_after_copy(self, value: bool) -> None:
+        self._settings.set_boolean("close-after-copy", value)
 
     @image_options_lock.setter
     def image_options_lock(self, value: bool) -> None:
@@ -248,11 +257,13 @@ class Settings:
     Internal Methods
     """
 
-    def _parse_rgba(self, color_str: str, fallback: tuple[float, float, float, float]) -> Gdk.RGBA:
+    def _parse_rgba(
+        self, color_str: str, fallback: tuple[float, float, float, float]
+    ) -> Gdk.RGBA:
         rgba = Gdk.RGBA()
 
         try:
-            parts = list(map(float, color_str.split(',')))
+            parts = list(map(float, color_str.split(",")))
 
             if len(parts) == 4:
                 rgba.red, rgba.green, rgba.blue, rgba.alpha = parts
@@ -268,45 +279,27 @@ class Settings:
 
     def bind_switch(self, switch: Gtk.Switch, key: str) -> None:
         if key in self._settings.list_keys():
-            self._settings.bind(
-                key,
-                switch,
-                "active",
-                Gio.SettingsBindFlags.DEFAULT
-            )
+            self._settings.bind(key, switch, "active", Gio.SettingsBindFlags.DEFAULT)
         else:
             print(f"Warning: GSettings key '{key}' not found in schema.")
 
     def bind_adjustment(self, adjustment: Gtk.Adjustment, key: str) -> None:
         if key in self._settings.list_keys():
-            self._settings.bind(
-                key,
-                adjustment,
-                "value",
-                Gio.SettingsBindFlags.DEFAULT
-            )
+            self._settings.bind(key, adjustment, "value", Gio.SettingsBindFlags.DEFAULT)
         else:
             print(f"Warning: GSettings key '{key}' not found in schema.")
 
     def bind_scale(self, scale: Gtk.Scale, key: str) -> None:
         if key in self._settings.list_keys():
             self._settings.bind(
-                key,
-                scale.get_adjustment(),
-                "value",
-                Gio.SettingsBindFlags.DEFAULT
+                key, scale.get_adjustment(), "value", Gio.SettingsBindFlags.DEFAULT
             )
         else:
             print(f"Warning: GSettings key '{key}' not found in schema.")
 
     def bind_spin_row(self, spin_row: object, key: str) -> None:
         if key in self._settings.list_keys():
-            self._settings.bind(
-                key,
-                spin_row,
-                "value",
-                Gio.SettingsBindFlags.DEFAULT
-            )
+            self._settings.bind(key, spin_row, "value", Gio.SettingsBindFlags.DEFAULT)
         else:
             print(f"Warning: GSettings key '{key}' not found in schema.")
 
@@ -321,4 +314,6 @@ class Settings:
         def on_toggle_group_changed(toggle_group):
             self._settings.set_string(key, toggle_group.get_active_name())
 
-        toggle_group.connect("notify::active-name", lambda w, p: on_toggle_group_changed(w))
+        toggle_group.connect(
+            "notify::active-name", lambda w, p: on_toggle_group_changed(w)
+        )

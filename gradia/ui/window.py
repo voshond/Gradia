@@ -15,41 +15,42 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from collections.abc import Callable
 import os
 import threading
+from collections.abc import Callable
 from typing import Any, Optional
 
-from gi.repository import Adw, GLib, GObject, Gdk, Gio, Gtk, Xdp
+from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk, Xdp
 
+from gradia.backend.settings import Settings
+from gradia.backend.tool_config import ToolOption
 from gradia.clipboard import *
+from gradia.constants import build_type, rootdir  # pyright: ignore
 from gradia.graphics.background import Background
 from gradia.graphics.gradient import GradientBackground
 from gradia.graphics.image import ImageBackground
 from gradia.graphics.image_processor import ImageProcessor
+from gradia.graphics.loaded_image import ImageOrigin, LoadedImage
 from gradia.graphics.solid import SolidBackground
 from gradia.overlay.drawing_actions import DrawingMode
 from gradia.ui.background_selector import BackgroundSelector
+from gradia.ui.dialog.confirm_close_dialog import ConfirmCloseDialog
+from gradia.ui.dialog.delete_screenshots_dialog import DeleteScreenshotsDialog
+from gradia.ui.dialog.ocr_launcher import present_ocr_dialog
 from gradia.ui.image_exporters import ExportManager
 from gradia.ui.image_loaders import ImportManager
-from gradia.graphics.loaded_image import LoadedImage, ImageOrigin
-from gradia.ui.image_sidebar import ImageSidebar, ImageOptions
+from gradia.ui.image_sidebar import ImageOptions, ImageSidebar
 from gradia.ui.image_stack import ImageStack
+from gradia.ui.preferences.preferences_window import PreferencesWindow
+from gradia.ui.preferences.provider_selection_window import ProviderListPage
 from gradia.ui.ui_parts import *
 from gradia.ui.welcome_page import WelcomePage
 from gradia.utils.aspect_ratio import *
-from gradia.ui.preferences.preferences_window import PreferencesWindow
-from gradia.backend.settings import Settings
-from gradia.constants import rootdir, build_type # pyright: ignore
-from gradia.ui.dialog.delete_screenshots_dialog import DeleteScreenshotsDialog
-from gradia.ui.dialog.confirm_close_dialog import ConfirmCloseDialog
-from gradia.backend.tool_config import ToolOption
-from gradia.ui.dialog.ocr_launcher import present_ocr_dialog
-from gradia.ui.preferences.provider_selection_window import ProviderListPage
+
 
 @Gtk.Template(resource_path=f"{rootdir}/ui/main_window.ui")
 class GradiaMainWindow(Adw.ApplicationWindow):
-    __gtype_name__ = 'GradiaMainWindow'
+    __gtype_name__ = "GradiaMainWindow"
 
     SIDEBAR_WIDTH: int = 300
 
@@ -74,13 +75,13 @@ class GradiaMainWindow(Adw.ApplicationWindow):
         version: str,
         file_path: Optional[str] = None,
         start_screenshot: Optional[str] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         super().__init__(**kwargs)
         self.settings = Settings()
 
         self._setup_accelerator_handling()
-        self.app: Adw.Application = kwargs['application']
+        self.app: Adw.Application = kwargs["application"]
         self.temp_dir: str = temp_dir
         self.version: str = version
         self.start_screenshot = start_screenshot
@@ -118,64 +119,182 @@ class GradiaMainWindow(Adw.ApplicationWindow):
     def _setup_actions(self) -> None:
         self.create_action("shortcuts", self._on_shortcuts_activated)
         self.create_action("about", self._on_about_activated)
-        self.create_action("donate", lambda *args: Gtk.UriLauncher.new("https://ko-fi.com/alexandervanhee").launch(None, None, None, None))
-        self.create_action("quit", lambda *_: self.close(),  ['<primary>q', '<primary>w'])
-        self.create_action("shortcuts", self._on_shortcuts_activated,  ['<primary>question'])
+        self.create_action(
+            "donate",
+            lambda *args: Gtk.UriLauncher.new(
+                "https://ko-fi.com/alexandervanhee"
+            ).launch(None, None, None, None),
+        )
+        self.create_action(
+            "quit", lambda *_: self.close(), ["<primary>q", "<primary>w"]
+        )
+        self.create_action(
+            "shortcuts", self._on_shortcuts_activated, ["<primary>question"]
+        )
 
-        self.create_action("open", lambda *_: self.import_manager.open_file_dialog(), ["<Primary>o"])
-        self.create_action("create-source-image", lambda *_: self.import_manager.generate_from_source_code(), ["<Primary>p"])
+        self.create_action(
+            "open", lambda *_: self.import_manager.open_file_dialog(), ["<Primary>o"]
+        )
+        self.create_action(
+            "create-source-image",
+            lambda *_: self.import_manager.generate_from_source_code(),
+            ["<Primary>p"],
+        )
         self.create_action("load-drop", self.import_manager._on_drop_action, vt="s")
-        self.create_action("paste", lambda *_: self.import_manager.load_from_clipboard(), ["<Primary>v"])
-        self.create_action("screenshot", lambda *_: self.import_manager.take_screenshot(), ["<Primary>a"])
-        self.create_action("open-path", lambda action, param: self.import_manager.load_from_file(param.get_string()), vt="s")
+        self.create_action(
+            "paste",
+            lambda *_: self.import_manager.load_from_clipboard(),
+            ["<Primary>v"],
+        )
+        self.create_action(
+            "screenshot",
+            lambda *_: self.import_manager.take_screenshot(),
+            ["<Primary>a"],
+        )
+        self.create_action(
+            "open-path",
+            lambda action, param: self.import_manager.load_from_file(
+                param.get_string()
+            ),
+            vt="s",
+        )
 
         self.create_action(
             "tool-option-changed",
-            lambda action, param: setattr(self.drawing_overlay, "options", ToolOption.deserialize(param.get_string())),
+            lambda action, param: setattr(
+                self.drawing_overlay,
+                "options",
+                ToolOption.deserialize(param.get_string()),
+            ),
             vt="s",
         )
-        self.create_action("del-selected", lambda *_: self.drawing_overlay.remove_selected_action(), ["<Primary>x", "Delete"])
+        self.create_action(
+            "del-selected",
+            lambda *_: self.drawing_overlay.remove_selected_action(),
+            ["<Primary>x", "Delete"],
+        )
 
-        self.create_action("open-folder", lambda *_: self.open_loaded_image_folder(), enabled=False)
-        self.create_action("save", lambda *_: self.export_manager.save_to_file(), ["<Primary>s"], enabled=False)
-        self.create_action("copy", lambda *_: self.export_manager.copy_to_clipboard(), ["<Primary>c"], enabled=False)
-        self.create_action("command", lambda *_: self._run_custom_command(), ["<Primary>m"])
+        self.create_action(
+            "open-folder", lambda *_: self.open_loaded_image_folder(), enabled=False
+        )
+        self.create_action(
+            "save",
+            lambda *_: self.export_manager.save_to_file(),
+            ["<Primary>s"],
+            enabled=False,
+        )
+        self.create_action(
+            "copy", self._on_copy_activated, ["<Primary>c"], enabled=False
+        )
+        self.create_action(
+            "command", lambda *_: self._run_custom_command(), ["<Primary>m"]
+        )
 
-        self.create_action("aspect-ratio-crop", lambda _, variant: self.image_bin.set_aspect_ratio(variant.get_double()), vt="d")
-        self.create_action("crop", lambda *_: self.image_bin.on_toggle_crop(), ["<Primary>r"])
-        self.create_action("crop-back", lambda *_: self.image_bin.crop_back(), ["Escape"])
-        self.create_action("reset-crop", lambda *_: self.image_bin.reset_crop_selection(), ["<Primary><Shift>r"])
-        self.create_action("sidebar-shown", lambda action, param: self.split_view.set_show_sidebar(param.get_boolean()), vt="b")
-        self.create_action("toggle-sidebar", lambda *_: self.split_view.set_show_sidebar(not self.split_view.get_show_sidebar()), ["F9"])
-        self.create_action("ocr", lambda *_: self.on_ocr(), ["<Primary>o"], stateful=True)
+        self.create_action(
+            "aspect-ratio-crop",
+            lambda _, variant: self.image_bin.set_aspect_ratio(variant.get_double()),
+            vt="d",
+        )
+        self.create_action(
+            "crop", lambda *_: self.image_bin.on_toggle_crop(), ["<Primary>r"]
+        )
+        self.create_action(
+            "crop-back", lambda *_: self.image_bin.crop_back(), ["Escape"]
+        )
+        self.create_action(
+            "reset-crop",
+            lambda *_: self.image_bin.reset_crop_selection(),
+            ["<Primary><Shift>r"],
+        )
+        self.create_action(
+            "sidebar-shown",
+            lambda action, param: self.split_view.set_show_sidebar(param.get_boolean()),
+            vt="b",
+        )
+        self.create_action(
+            "toggle-sidebar",
+            lambda *_: self.split_view.set_show_sidebar(
+                not self.split_view.get_show_sidebar()
+            ),
+            ["F9"],
+        )
+        self.create_action(
+            "ocr", lambda *_: self.on_ocr(), ["<Primary>o"], stateful=True
+        )
 
-        self.create_action("zoom-in", lambda *_: self.image_bin.zoom_in(), ["<Control>plus", "<Control>equal", "<Control>KP_Add"])
-        self.create_action("zoom-out", lambda *_: self.image_bin.zoom_out(), ["<Control>minus", "<Control>KP_Subtract"])
-        self.create_action("reset-zoom", lambda *_: self.image_bin.reset_zoom(), ["<Control>0", "<Control>KP_0"])
-        self.create_action("pan-left", lambda *_: self.image_bin.pan(50, 0), ["<Control>Left"])
-        self.create_action("pan-right", lambda *_: self.image_bin.pan(-50, 0), ["<Control>Right"])
-        self.create_action("pan-up", lambda *_: self.image_bin.pan(0, 50), ["<Control>Up"])
-        self.create_action("pan-down", lambda *_: self.image_bin.pan(0, -50), ["<Control>Down"])
+        self.create_action(
+            "zoom-in",
+            lambda *_: self.image_bin.zoom_in(),
+            ["<Control>plus", "<Control>equal", "<Control>KP_Add"],
+        )
+        self.create_action(
+            "zoom-out",
+            lambda *_: self.image_bin.zoom_out(),
+            ["<Control>minus", "<Control>KP_Subtract"],
+        )
+        self.create_action(
+            "reset-zoom",
+            lambda *_: self.image_bin.reset_zoom(),
+            ["<Control>0", "<Control>KP_0"],
+        )
+        self.create_action(
+            "pan-left", lambda *_: self.image_bin.pan(50, 0), ["<Control>Left"]
+        )
+        self.create_action(
+            "pan-right", lambda *_: self.image_bin.pan(-50, 0), ["<Control>Right"]
+        )
+        self.create_action(
+            "pan-up", lambda *_: self.image_bin.pan(0, 50), ["<Control>Up"]
+        )
+        self.create_action(
+            "pan-down", lambda *_: self.image_bin.pan(0, -50), ["<Control>Down"]
+        )
 
         for mode in DrawingMode:
             self.create_action(
                 f"set-drawing-mode-{mode.name.lower()}",
                 lambda *_, m=mode: self.sidebar.set_drawing_mode(m),
                 mode.shortcuts,
-                disable_on_entry_focus=True
+                disable_on_entry_focus=True,
             )
 
-        self.create_action("undo", lambda *_: self.drawing_overlay.undo(), ["<Primary>z"], enabled=False)
-        self.create_action("redo", lambda *_: self.drawing_overlay.redo(), ["<Primary><Shift>z"], enabled=False)
+        self.create_action(
+            "undo",
+            lambda *_: self.drawing_overlay.undo(),
+            ["<Primary>z"],
+            enabled=False,
+        )
+        self.create_action(
+            "redo",
+            lambda *_: self.drawing_overlay.redo(),
+            ["<Primary><Shift>z"],
+            enabled=False,
+        )
         self.create_action("clear", lambda *_: self.drawing_overlay.clear_drawing())
-        self.create_action("draw-mode", lambda action, param: self.drawing_overlay.set_drawing_mode(DrawingMode(param.get_string())), vt="s")
+        self.create_action(
+            "draw-mode",
+            lambda action, param: self.drawing_overlay.set_drawing_mode(
+                DrawingMode(param.get_string())
+            ),
+            vt="s",
+        )
 
-        self.create_action("delete-screenshots", lambda *_: self._create_delete_screenshots_dialog(), ["<Primary><Shift>d"], enabled=False)
+        self.create_action(
+            "delete-screenshots",
+            lambda *_: self._create_delete_screenshots_dialog(),
+            ["<Primary><Shift>d"],
+            enabled=False,
+        )
 
-        self.create_action("preferences", self._on_preferences_activated, ['<primary>comma'])
+        self.create_action(
+            "preferences", self._on_preferences_activated, ["<primary>comma"]
+        )
 
-        self.create_action("set-screenshot-folder",  lambda action, param: self.set_screenshot_folder(param.get_string()), vt="s")
-
+        self.create_action(
+            "set-screenshot-folder",
+            lambda action, param: self.set_screenshot_folder(param.get_string()),
+            vt="s",
+        )
 
     """
     Setup Methods
@@ -208,12 +327,15 @@ class GradiaMainWindow(Adw.ApplicationWindow):
     """
     Shutdown
     """
+
     def _on_close_request(self, window) -> bool:
         exit_method = self.settings.exit_method
 
         if exit_method == "confirm" and self.show_close_confirmation:
             confirm_dialog = ConfirmCloseDialog(self)
-            confirm_dialog.show_dialog(self._on_confirm_close_ok, self._on_confirm_close_copy)
+            confirm_dialog.show_dialog(
+                self._on_confirm_close_ok, self._on_confirm_close_copy
+            )
             return True
         elif exit_method == "copy":
             self._on_confirm_close_copy()
@@ -229,12 +351,13 @@ class GradiaMainWindow(Adw.ApplicationWindow):
         if not copy:
             self.hide()
 
-        save = not self.settings.delete_screenshots_on_close and self.settings.overwrite_screenshot
+        save = (
+            not self.settings.delete_screenshots_on_close
+            and self.settings.overwrite_screenshot
+        )
         if self.image_ready:
             self.export_manager.close_handler(
-                copy=copy,
-                save=save,
-                callback=self._on_close_finished
+                copy=copy, save=save, callback=self._on_close_finished
             )
         else:
             self._on_close_finished()
@@ -243,14 +366,26 @@ class GradiaMainWindow(Adw.ApplicationWindow):
         def delayed_destroy():
             self.destroy()
             return False
+
         self.hide()
-        GLib.timeout_add(1000, delayed_destroy) # Large images need the extra milliseconds to be fully copied.
+        GLib.timeout_add(
+            1000, delayed_destroy
+        )  # Large images need the extra milliseconds to be fully copied.
 
     def _on_confirm_close_ok(self) -> None:
         self._finalize_close(copy=False)
 
     def _on_confirm_close_copy(self) -> None:
         self._finalize_close(copy=True)
+
+    def _close_after_copy(self) -> None:
+        self._finalize_close(copy=True)
+
+    def _on_copy_activated(self, action: Gio.SimpleAction, param: GLib.Variant) -> None:
+        if self.settings.close_after_copy:
+            self.export_manager.copy_and_close()
+        else:
+            self.export_manager.copy_to_clipboard()
 
     """
     Callbacks
@@ -267,7 +402,9 @@ class GradiaMainWindow(Adw.ApplicationWindow):
                 self.processor.aspect_ratio = None
             else:
                 if not check_aspect_ratio_bounds(ratio):
-                    raise ValueError(f"Aspect ratio must be between 0.2 and 5 (got {ratio})")
+                    raise ValueError(
+                        f"Aspect ratio must be between 0.2 and 5 (got {ratio})"
+                    )
                 self.processor.aspect_ratio = ratio
         except Exception as e:
             print(f"Invalid aspect ratio: {options.aspect_ratio} ({e})")
@@ -278,11 +415,15 @@ class GradiaMainWindow(Adw.ApplicationWindow):
 
         self._trigger_processing()
 
-    def _on_about_activated(self, action: Gio.SimpleAction, param: GObject.ParamSpec) -> None:
+    def _on_about_activated(
+        self, action: Gio.SimpleAction, param: GObject.ParamSpec
+    ) -> None:
         about = AboutDialog(version=self.version)
         about.show(self)
 
-    def _on_shortcuts_activated(self, action: Gio.SimpleAction, param: GObject.ParamSpec) -> None:
+    def _on_shortcuts_activated(
+        self, action: Gio.SimpleAction, param: GObject.ParamSpec
+    ) -> None:
         shortcuts = ShortcutsDialog(self)
 
     def _on_shortcuts_closed(self, dialog: Adw.Window) -> bool:
@@ -294,35 +435,37 @@ class GradiaMainWindow(Adw.ApplicationWindow):
     """
 
     def create_action(
-            self,
-            name: str,
-            callback: Callable[..., Any],
-            shortcuts: Optional[list[str]] = None,
-            enabled: bool = True,
-            vt: Optional[str] = None,
-            disable_on_entry_focus: bool = False,
-            stateful: Optional[bool] = None
-        ) -> None:
-            variant_type = GLib.VariantType.new(vt) if vt is not None else None
+        self,
+        name: str,
+        callback: Callable[..., Any],
+        shortcuts: Optional[list[str]] = None,
+        enabled: bool = True,
+        vt: Optional[str] = None,
+        disable_on_entry_focus: bool = False,
+        stateful: Optional[bool] = None,
+    ) -> None:
+        variant_type = GLib.VariantType.new(vt) if vt is not None else None
 
-            if stateful is not None:
-                initial_state = GLib.Variant.new_boolean(stateful)
-                action: Gio.SimpleAction = Gio.SimpleAction.new_stateful(name, variant_type, initial_state)
-            else:
-                action: Gio.SimpleAction = Gio.SimpleAction.new(name, variant_type)
+        if stateful is not None:
+            initial_state = GLib.Variant.new_boolean(stateful)
+            action: Gio.SimpleAction = Gio.SimpleAction.new_stateful(
+                name, variant_type, initial_state
+            )
+        else:
+            action: Gio.SimpleAction = Gio.SimpleAction.new(name, variant_type)
 
-            action.connect("activate", callback)
-            action.set_enabled(enabled)
-            self.add_action(action)
-            if shortcuts:
-                self.app.set_accels_for_action(f"win.{name}", shortcuts)
-                if disable_on_entry_focus:
-                    if not hasattr(self, '_entry_disabled_actions'):
-                        self._entry_disabled_actions = {}
-                    self._entry_disabled_actions[name] = shortcuts
+        action.connect("activate", callback)
+        action.set_enabled(enabled)
+        self.add_action(action)
+        if shortcuts:
+            self.app.set_accels_for_action(f"win.{name}", shortcuts)
+            if disable_on_entry_focus:
+                if not hasattr(self, "_entry_disabled_actions"):
+                    self._entry_disabled_actions = {}
+                self._entry_disabled_actions[name] = shortcuts
 
     def _setup_accelerator_handling(self) -> None:
-        if not hasattr(self, '_entry_disabled_actions'):
+        if not hasattr(self, "_entry_disabled_actions"):
             self._entry_disabled_actions = {}
 
         def on_focus_changed(window, pspec):
@@ -331,7 +474,7 @@ class GradiaMainWindow(Adw.ApplicationWindow):
             if widget:
                 if isinstance(widget, (Gtk.Entry, Gtk.TextView, Gtk.SearchEntry)):
                     is_editable = True
-                elif type(widget).__name__ == 'Text':
+                elif type(widget).__name__ == "Text":
                     is_editable = widget.get_editable()
 
             if is_editable:
@@ -349,8 +492,10 @@ class GradiaMainWindow(Adw.ApplicationWindow):
     def process_image(self, callback=None) -> None:
         if not self.image:
             return
+
         def worker():
             self._process_in_background(callback)
+
         threading.Thread(target=worker, daemon=True).start()
 
     """
@@ -374,7 +519,6 @@ class GradiaMainWindow(Adw.ApplicationWindow):
             self.lookup_action("open-folder").set_enabled(image.has_proper_folder())
 
         self.process_image(callback=after_process)
-
 
     def show_loading_state(self) -> None:
         self.main_stack.set_visible_child_name("main")
@@ -427,7 +571,12 @@ class GradiaMainWindow(Adw.ApplicationWindow):
         size_str: str = f"{width}×{height}"
         self.sidebar.processed_size_row.set_subtitle(size_str)
 
-    def _show_notification(self, message: str,action_label: str | None = None,action_callback: Callable[[], None] | None = None) -> None:
+    def _show_notification(
+        self,
+        message: str,
+        action_label: str | None = None,
+        action_callback: Callable[[], None] | None = None,
+    ) -> None:
         if self.toast_overlay:
             toast = Adw.Toast.new(message)
             if action_label and action_callback:
@@ -461,7 +610,7 @@ class GradiaMainWindow(Adw.ApplicationWindow):
         dialog.show(
             self.import_manager.get_screenshot_uris(),
             self.import_manager.delete_screenshots,
-            self._show_notification
+            self._show_notification,
         )
 
     def _on_preferences_activated(self, action: Gio.SimpleAction, param) -> None:
@@ -472,10 +621,12 @@ class GradiaMainWindow(Adw.ApplicationWindow):
         self.welcome_content.refresh_recent_picker()
 
     def update_command_ready(self) -> None:
-        action = self.lookup_action('command')
+        action = self.lookup_action("command")
         if action:
             action.set_enabled(self.image_ready)
-            self.share_button.set_visible(bool(self.settings.custom_export_command.strip()))
+            self.share_button.set_visible(
+                bool(self.settings.custom_export_command.strip())
+            )
 
     def _run_custom_command(self) -> None:
         if not self.settings.custom_export_command:
@@ -488,7 +639,11 @@ class GradiaMainWindow(Adw.ApplicationWindow):
                 dialog.close()
                 self._run_custom_command()
 
-            provider_page = ProviderListPage(preferences_dialog=dialog, on_provider_selected=handle_selection, can_pop=False)
+            provider_page = ProviderListPage(
+                preferences_dialog=dialog,
+                on_provider_selected=handle_selection,
+                can_pop=False,
+            )
             dialog.push_subpage(provider_page)
             dialog.present(self)
             return
@@ -498,22 +653,32 @@ class GradiaMainWindow(Adw.ApplicationWindow):
 
             dialog = Adw.AlertDialog.new(
                 heading=_("Confirm Upload"),
-                body=_(f"Are you sure you want to upload this image to {provider_name}?")
+                body=_(
+                    f"Are you sure you want to upload this image to {provider_name}?"
+                ),
             )
             dialog.add_response("cancel", _("Cancel"))
             dialog.add_response("confirm", _("Upload"))
             dialog.set_default_response("cancel")
             dialog.set_response_appearance("confirm", Adw.ResponseAppearance.SUGGESTED)
 
-            dialog.connect("response", lambda dialog, response_id:
-                          self.export_manager.run_custom_command() if response_id == "confirm" else None)
+            dialog.connect(
+                "response",
+                lambda dialog, response_id: (
+                    self.export_manager.run_custom_command()
+                    if response_id == "confirm"
+                    else None
+                ),
+            )
 
             dialog.present(self.get_root())
         else:
             self.export_manager.run_custom_command()
 
     def on_ocr(self):
-        crop_x, crop_y, crop_w, crop_h = self.image_bin.crop_overlay.get_crop_rectangle()
+        crop_x, crop_y, crop_w, crop_h = (
+            self.image_bin.crop_overlay.get_crop_rectangle()
+        )
         has_crop = self.image_bin.crop_overlay.has_crop()
 
         if has_crop:
