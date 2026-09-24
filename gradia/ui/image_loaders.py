@@ -25,6 +25,7 @@ from gi.repository import Gtk, Gio, Gdk, GLib, Xdp
 from gradia.clipboard import save_texture_to_file
 from gradia.ui.image_creation.source_image_generator import SourceImageGeneratorWindow
 from gradia.utils.timestamp_filename import TimestampedFilenameGenerator
+from gradia.utils.niri_screenshot import capture_niri_screenshot, is_niri_session
 from gradia.backend.logger import Logger
 from gradia.graphics.loaded_image import LoadedImage, ImageOrigin
 from typing import Optional, Callable
@@ -250,6 +251,10 @@ class ScreenshotImageLoader(BaseImageLoader):
                 on_error_or_cancel(str(e))
 
     def _do_take_screenshot(self, flags: Xdp.ScreenshotFlags) -> bool:
+        if flags == Xdp.ScreenshotFlags.INTERACTIVE and is_niri_session():
+            threading.Thread(target=self._capture_niri_screenshot, daemon=True).start()
+            return False
+
         try:
             self.portal.take_screenshot(
                 None,
@@ -265,6 +270,36 @@ class ScreenshotImageLoader(BaseImageLoader):
             if self._error_callback:
                 self._error_callback(str(e))
             self._error_callback = None
+        return False
+
+    def _capture_niri_screenshot(self) -> None:
+        try:
+            path = capture_niri_screenshot(
+                on_ui_opened=lambda: GLib.timeout_add(300, self.window.show)
+            )
+        except Exception as error:
+            GLib.idle_add(self._on_niri_screenshot_error, str(error))
+        else:
+            GLib.idle_add(self._on_niri_screenshot_taken, path)
+
+    def _on_niri_screenshot_taken(self, path: str) -> bool:
+        uri = Gio.File.new_for_path(path).get_uri()
+        try:
+            self._screenshot_uris.append(uri)
+            self._handle_screenshot_uri(uri)
+            self._update_delete_action_state()
+        finally:
+            self.window.show()
+            self._error_callback = None
+        return False
+
+    def _on_niri_screenshot_error(self, message: str) -> bool:
+        logger.error(f"Niri screenshot error: {message}")
+        self.window.show()
+        self.window._show_notification(_("Screenshot cancelled or failed"))
+        if self._error_callback:
+            self._error_callback(message)
+        self._error_callback = None
         return False
 
     def _on_screenshot_taken(self, portal_object, result, user_data) -> None:

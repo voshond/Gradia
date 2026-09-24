@@ -1,7 +1,7 @@
 [Desktop Entry]
 Name=Gradia
 Comment=Make your images ready for the world
-Exec=gradia %U
+Exec=@BINDIR@/gradia %U
 Icon=@APP_ID@
 StartupNotify=true
 DBusActivatable=true
@@ -15,16 +15,15 @@ X-Purism-FormFactor=Workstation;Mobile;
 
 [Desktop Action new-window]
 Name=New Window
-Exec=gradia --new-window
+Exec=@BINDIR@/gradia --new-window
 Icon=application-new-window
 
 [Desktop Action take-screenshot]
 Name=Take Screenshot
-Exec=gradia --screenshot
+Exec=@BINDIR@/gradia --screenshot
 Icon=camera-photo
 
 [Desktop Action take-fullscreen-screenshot]
 Name=Take Fullscreen Screenshot
-Exec=gradia --screenshot=full
+Exec=@BINDIR@/gradia --screenshot=full
 Icon=camera-photo
-

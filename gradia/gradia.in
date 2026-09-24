@@ -32,6 +32,7 @@ VERSION = '@VERSION@'
 pkgdatadir = '@PKGDATA_DIR@'
 localedir = '@LOCALE_DIR@'
 sys.path.insert(1, pkgdatadir)
+from gradia.utils.niri_screenshot import NiriScreenshotError, capture_niri_screenshot, is_niri_session
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 locale.bindtextdomain('gradia', localedir)
 locale.textdomain('gradia')
@@ -88,9 +89,16 @@ if __name__ == '__main__':
                     print("Invalid delay value. Using default of 0.")
                     delay = 0
     if mode in ('INTERACTIVE', 'FULL'):
-        flags = Xdp.ScreenshotFlags.INTERACTIVE if mode == 'INTERACTIVE' else Xdp.ScreenshotFlags.NONE
-        screenshotter = QuickStartScreenshotTaker()
-        screenshot_path = screenshotter.take_screenshot(flags=flags, delay_ms=delay)
+        if mode == 'INTERACTIVE' and is_niri_session():
+            try:
+                screenshot_path = capture_niri_screenshot(delay_ms=delay)
+            except (NiriScreenshotError, OSError) as error:
+                print("Screenshot failed:", error)
+                screenshot_path = None
+        else:
+            flags = Xdp.ScreenshotFlags.INTERACTIVE if mode == 'INTERACTIVE' else Xdp.ScreenshotFlags.NONE
+            screenshotter = QuickStartScreenshotTaker()
+            screenshot_path = screenshotter.take_screenshot(flags=flags, delay_ms=delay)
         if screenshot_path is None:
             print("Screenshot was cancelled or failed. Exiting.")
             sys.exit(1)

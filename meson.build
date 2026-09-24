@@ -70,6 +70,7 @@ enable_ocr = get_option('enable-ocr')
 # Install configuration data
 conf = configuration_data()
 conf.set('APP_ID', APPLICATION_ID)
+conf.set('BINDIR', join_paths(get_option('prefix'), get_option('bindir')))
 conf.set('ROOT_PATH', ROOT_PATH)
 conf.set('PKGDATA_DIR', PKGDATA_DIR)
 conf.set('DATA_DIR', join_paths(get_option('prefix'), get_option('datadir')))

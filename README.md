@@ -66,7 +66,12 @@ If you'd like Gradia to **open automatically** after taking a screenshot, you ca
    flatpak run be.alexandervanhee.gradia --screenshot=INTERACTIVE
    ```
    (You can also use `--screenshot=FULL` to take a screenshot of all existing screens instantly.)
+   For a native installation, use `gradia --screenshot=INTERACTIVE`.
 5. Assign a keyboard shortcut of your choice (`Ctrl + Print` should be free by default).
+
+On niri, a native installation uses niri's built-in screenshot picker for
+`--screenshot=INTERACTIVE`. Press Enter or Space to save the selection and open it
+in Gradia. Ctrl+C copies the selection to the clipboard without opening Gradia.
 
 ## Screenshots
 
@@ -91,4 +96,3 @@ If you'd like Gradia to **open automatically** after taking a screenshot, you ca
 3. Once cloned, locate the dropdown menu next to the `be.alexandervanhee.gradia.json` text at the top of the screen.
 4. In the dropdown, use the **Active Configuration** option to select either the *Devel* Flatpak build file or the regular one, then press the **Run** button.
    The *Devel* configuration includes everything required for OCR.
-
